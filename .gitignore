@@ -10,3 +10,4 @@ diagnostic_log_*.csv
 
 .env
 calibration_*.npy
+chat.py
