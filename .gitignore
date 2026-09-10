@@ -9,3 +9,4 @@ calibration_log_*.csv
 diagnostic_log_*.csv
 
 .env
+calibration_*.npy
