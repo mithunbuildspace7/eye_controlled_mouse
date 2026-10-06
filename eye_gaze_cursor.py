@@ -19,7 +19,7 @@ import gaze_lib as gl
 # ============================================
 
 CAMERA_RESOLUTIONS = [(1920, 1080), (1280, 720), (960, 540), (640, 480)]
-DETECTION_SCALE = 1.0  # item 7: test 0.85 vs 1.0 — full-res kept here for max eye pixels
+DETECTION_SCALE = 0.9  # was 1.0 — small resolution trade for real FPS gain; still plenty of eye detail
 
 MODEL_PATH = "face_landmarker.task"
 MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
@@ -28,7 +28,7 @@ CALIB_GRID_COLS = 7
 CALIB_GRID_ROWS = 7
 CALIB_MARGIN = 0.04
 VALIDATION_ROWCOLS = {1, 3, 5}
-CORNER_EDGE_MARGIN = 0.015   # item 11: dedicated near-boundary points, tighter than the main grid
+CORNER_EDGE_MARGIN = 0.006   # was 0.015 — right at the true boundary now, so no model has to extrapolate to reach it
 
 CALIB_SETTLE_TIME = 0.4
 CALIB_SAMPLE_TIME = 0.9
@@ -47,7 +47,7 @@ SCROLL_DEAD_ZONE = 0.02
 SCROLL_SENSITIVITY = 45
 SCROLL_MAX_OFFSET = 0.15
 
-MAX_CURSOR_SPEED_PX_PER_SEC = 2200
+MAX_CURSOR_SPEED_PX_PER_SEC = 4500  # was 2200 — that was capping normal fast eye movement, not just glitches
 
 DIAGNOSTIC_POINTS = [
     (0.50, 0.50, "center"),
@@ -182,24 +182,6 @@ def _mouth_ratio(landmarks, w, h):
     vert = math.hypot((top.x - bottom.x) * w, (top.y - bottom.y) * h)
     horiz = math.hypot((left.x - right.x) * w, (left.y - right.y) * h)
     return vert / horiz if horiz > 1e-6 else 0.0
-
-
-def draw_iris_markers(frame, landmarks, w, h):
-    """Draw visual-only eye reference points and yellow iris-center markers."""
-    for idx in (*gl.LEFT_EYE_CORNERS, *gl.RIGHT_EYE_CORNERS,
-                *gl.LEFT_UPPER_LID, *gl.LEFT_LOWER_LID,
-                *gl.RIGHT_UPPER_LID, *gl.RIGHT_LOWER_LID):
-        pt = landmarks[idx]
-        cv2.circle(frame, (int(pt.x * w), int(pt.y * h)), 2, (100, 100, 100), -1)
-
-    # Yellow = BGR (0, 255, 255). These are display markers only; they do
-    # not alter the gaze features, model prediction, or cursor movement.
-    for idx in (gl.LEFT_IRIS_CENTER, gl.RIGHT_IRIS_CENTER):
-        pt = landmarks[idx]
-        center = (int(pt.x * w), int(pt.y * h))
-        cv2.circle(frame, center, 3, (0, 255, 255), -1)
-        cv2.circle(frame, center, 7, (0, 255, 255), 1)
-    return frame
 
 
 # ============================================
@@ -610,7 +592,6 @@ while True:
             feat = gl.extract_features(landmarks, frame, w, h)
             live_confidence = feat.confidence
             mouth_ratio = _mouth_ratio(landmarks, w, h)
-            frame = draw_iris_markers(frame, landmarks, w, h)
 
             is_closed = feat.avg_ear < BLINK_EAR_THRESHOLD
             is_mouth_open = mouth_ratio > MOUTH_OPEN_THRESHOLD
